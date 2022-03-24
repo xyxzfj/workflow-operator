@@ -3,4 +3,66 @@ kind: Workflow
 metadata:
   name: workflow-sample
 spec:
-  # Add fields here
+  schedule: "0/10 * * * *" # 执行时间
+  steps:
+    - name: producer
+      description: "生产任务项"
+      actions:
+        - name: "produce"
+          spec: # JobSpec
+            #            parallelism: 1
+            #            backoffLimit: 1
+            template:
+              spec: # PodSpec
+                restartPolicy: Never
+                containers:
+                  - name: n1
+                    image: alpine:3.14
+                    imagePullPolicy: IfNotPresent
+                    command:
+                      - sh
+                      - -c
+                      - "date && echo 'produce begin' && sleep 60 && date && echo 'produce end'"
+    - name: consumers
+      description: "消费任务项，同时处理中间结果"
+      actions:
+        - name: "consume"
+          spec: # JobSpec
+            parallelism: 8 # 多实例并行
+            template:
+              spec: # PodSpec
+                restartPolicy: Never
+                containers:
+                  - name: n2
+                    image: alpine:3.14
+                    command:
+                      - sh
+                      - -c
+                      - "date && echo 'consume begin' && sleep 30 && date && echo 'consume end'"
+        - name: "handle-intermediate-result"
+          spec: # JobSpec
+            template:
+              spec: # PodSpec
+                restartPolicy: Never
+                containers:
+                  - name: n3
+                    image: alpine:3.14
+                    command:
+                      - sh
+                      - -c
+                      - "date && echo 'intermediate begin' && sleep 60 && date && echo 'intermediate end'"
+    - name: concluder
+      description: "处理最终结果"
+      actions:
+        - name: "handle-final-result"
+          spec: # JobSpec
+            template:
+              spec: # PodSpec
+                restartPolicy: Never
+                containers:
+                  - name: n4
+                    image: alpine:3.14
+                    command:
+                      - sh
+                      - -c
+                      - "date && echo 'final begin' && sleep 10 && date && echo 'final end'"
